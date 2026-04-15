@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set Take Profit — Web</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<style>
+:root {
+  --bg0: #111111;
+  --bg1: #1c1c1c;
+  --bg2: #2a2a2a;
+  --bg3: #3a3a3a;
+  --text-p: #eeeeee;
+  --text-s: #b4b4b4;
+  --text-t: #959595;
+  --text-m: #7b7b7b;
+  --positive: #34c759;
+  --negative: #ff453a;
+  --blue: #0a84ff;
+  --border: #2a2a2a;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Modal Shell ── */
+.modal {
+  width: 560px; max-height: calc(100vh - 80px);
+  background: var(--bg0);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.modal-header {
+  padding: 16px 16px 0 40px;
+  display: flex; flex-direction: column; align-items: flex-end;
+  flex-shrink: 0;
+}
+.close-btn {
+  width: 24px; height: 24px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.close-btn svg { display: block; }
+.modal-title {
+  width: 100%; padding-right: 64px; padding-bottom: 16px;
+  font-size: 24px; font-weight: 600; color: var(--text-p);
+  letter-spacing: -0.48px; line-height: 1.12;
+}
+
+/* ── Content ── */
+.modal-content {
+  flex: 1; overflow-y: auto; min-height: 0;
+  padding: 0 40px;
+}
+.content-inner {
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* ── Mode Selector ── */
+.mode-selector {
+  display: flex; align-items: center; gap: 27px;
+  justify-content: center; padding: 0 64px; position: relative;
+}
+.seg-control {
+  flex: 1; display: flex; align-items: center;
+  border: 1px solid var(--border); border-radius: 1000px;
+  padding: 4px; cursor: pointer;
+}
+.seg-item {
+  flex: 1; height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; color: var(--text-p);
+  border-radius: 1000px; transition: background 0.2s;
+  letter-spacing: -0.21px; user-select: none;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.seg-item.active { background: var(--bg3); }
+.mode-info-btn {
+  position: absolute; right: -4px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 4px;
+}
+
+/* ── Asset Info ── */
+.asset-info {
+  display: flex; align-items: center; gap: 8px; position: relative;
+}
+.asset-icon {
+  width: 32px; height: 32px; border-radius: 50%; background: #f7931a;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: 14px; font-weight: 700; color: #fff;
+}
+.asset-details { display: flex; flex-direction: column; }
+.asset-title-row { display: flex; align-items: center; gap: 8px; }
+.asset-name {
+  font-size: 16px; font-weight: 600; color: var(--text-p);
+  letter-spacing: -0.24px; line-height: 1.35;
+}
+.badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 20px; padding: 2px 8px; border-radius: 1000px;
+  font-size: 11px; font-weight: 400; line-height: 1.4;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.badge-long { border: 1px solid #216331; color: var(--positive); }
+.badge-lev { border: 1px solid var(--bg3); color: var(--text-s); }
+.asset-mark-price {
+  font-size: 14px; font-weight: 400; color: var(--text-t);
+  letter-spacing: -0.21px; line-height: 1.4;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.chart-btn {
+  position: absolute; right: -4px; top: 5px;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 4px;
+}
+
+/* ── Order Input ── */
+.order-input {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+/* Limit Order Toggle */
+.limit-toggle {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; padding-bottom: 8px; cursor: pointer; user-select: none;
+}
+.checkbox {
+  width: 16px; height: 16px; border-radius: 3px; border: 1.5px solid var(--text-t);
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  flex-shrink: 0;
+}
+.checkbox.checked { background: var(--blue); border-color: var(--blue); }
+.checkbox svg { display: none; }
+.checkbox.checked svg { display: block; }
+.limit-toggle-label { font-size: 14px; color: var(--text-p); letter-spacing: -0.21px; }
+
+/* Price Card */
+.price-card {
+  background: var(--bg1); border-radius: 12px;
+  padding: 16px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.price-card:hover { background: #202020; }
+.price-card.bbo-active { cursor: default; }
+.price-card.bbo-active:hover { background: var(--bg1); }
+
+.price-field { display: flex; flex-direction: column; gap: 4px; }
+.price-label {
+  font-size: 14px; font-weight: 400; color: var(--text-p);
+  letter-spacing: -0.21px; line-height: 1.4;
+}
+.price-label-row { display: flex; align-items: center; }
+.price-label-row .price-label { flex: 1; }
+.bbo-toggle {
+  display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+}
+.bbo-label { font-size: 14px; color: var(--text-p); letter-spacing: -0.21px; }
+
+.price-value-row { display: flex; align-items: flex-end; gap: 8px; }
+.price-value {
+  flex: 1; font-size: 20px; font-weight: 600; color: var(--text-p);
+  letter-spacing: -0.4px; line-height: 1.12;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.price-value.placeholder { color: var(--text-m); }
+.price-value .cursor {
+  display: inline-block; width: 2px; height: 22px; background: var(--blue);
+  margin-left: 1px; vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.price-offset { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.price-pct { font-size: 14px; font-feature-settings: 'lnum' 1, 'tnum' 1; letter-spacing: -0.21px; }
+.price-pct.positive { color: var(--positive); }
+.price-pct.negative { color: var(--negative); }
+.price-pct.neutral { color: var(--text-p); }
+.price-from { font-size: 14px; color: var(--text-p); letter-spacing: -0.21px; }
+.price-from.muted { color: var(--text-p); }
+
+.price-help {
+  font-size: 14px; color: var(--text-s); line-height: 1.4;
+  letter-spacing: -0.21px;
+}
+.price-error {
+  font-size: 14px; color: var(--negative); line-height: 1.4;
+  letter-spacing: -0.21px;
+}
+
+.quick-adjust {
+  display: flex; gap: 4px;
+}
+.adjust-btn {
+  flex: 1; height: 32px; background: var(--bg2); border: none; border-radius: 8px;
+  font-family: inherit; font-size: 14px; color: var(--text-p);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s; user-select: none; letter-spacing: -0.21px;
+}
+.adjust-btn:hover { background: var(--bg3); }
+
+/* BBO Info */
+.bbo-value {
+  font-size: 20px; font-weight: 600; color: var(--text-p);
+  letter-spacing: -0.4px; line-height: 1.12;
+}
+.bbo-help {
+  font-size: 14px; color: var(--text-s); line-height: 1.4;
+  letter-spacing: -0.21px;
+}
+
+/* ── Quantity Card ── */
+.qty-card {
+  background: var(--bg1); border-radius: 12px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.qty-field { display: flex; flex-direction: column; gap: 4px; }
+.qty-label {
+  font-size: 14px; font-weight: 400; color: var(--text-p);
+  letter-spacing: -0.21px; line-height: 1.4;
+}
+.qty-value-row { display: flex; align-items: baseline; gap: 4px; }
+.qty-value {
+  font-size: 20px; font-weight: 600; color: var(--text-p);
+  letter-spacing: -0.4px; line-height: 1.12;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.qty-unit {
+  font-size: 16px; font-weight: 600; color: var(--text-p);
+  letter-spacing: -0.24px; line-height: 1.35;
+}
+.qty-helper-row { display: flex; align-items: center; gap: 10px; }
+.qty-helper {
+  flex: 1; font-size: 14px; font-weight: 400; color: var(--text-t);
+  letter-spacing: -0.21px; line-height: 1.4;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.qty-badge {
+  height: 20px; padding: 2px 8px; border-radius: 1000px;
+  background: rgba(238,238,238,0.1);
+  font-size: 11px; font-weight: 400; color: var(--text-s);
+  line-height: 1.4; white-space: nowrap;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.qty-error {
+  font-size: 14px; font-weight: 400; color: var(--negative);
+  letter-spacing: -0.21px; line-height: 1.4;
+}
+
+/* Slider */
+.slider-wrap { padding-bottom: 4px; }
+.slider-track {
+  position: relative; height: 10px;
+  display: flex; align-items: center;
+  cursor: pointer; touch-action: none;
+}
+.slider-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--bg3); flex-shrink: 0;
+  position: relative; z-index: 1;
+}
+.slider-dot.active { background: var(--blue); }
+.slider-bar {
+  flex: 1; height: 4px; background: var(--bg3);
+  margin: 0 -1px; position: relative; z-index: 0;
+}
+.slider-bar.active { background: var(--blue); }
+.slider-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--blue); position: absolute;
+  top: -4px; z-index: 3;
+  transform: translateX(-50%); pointer-events: none;
+}
+.slider-labels {
+  display: flex; justify-content: space-between; margin-top: 8px;
+  font-size: 12px; font-weight: 400; color: var(--text-t);
+  letter-spacing: -0.18px; line-height: 1.4;
+}
+
+/* ── Summary ── */
+.summary {
+  border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.summary-row { display: flex; justify-content: space-between; align-items: center; }
+.summary-label {
+  font-size: 14px; font-weight: 400; color: var(--text-s);
+  letter-spacing: -0.21px; line-height: 1.4;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.summary-label.primary {
+  font-weight: 400; color: var(--text-s);
+  text-decoration: underline dashed; text-underline-offset: 3px;
+  cursor: help;
+}
+.summary-value {
+  font-size: 14px; font-weight: 400; color: var(--text-p);
+  letter-spacing: -0.21px; line-height: 1.4; text-align: right;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.summary-value.positive { color: var(--positive); }
+.summary-value.negative { color: var(--negative); }
+.summary-value.neutral { color: var(--text-p); }
+
+/* ── Bottom (Gradient + Button) ── */
+.modal-bottom {
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+}
+.bottom-gradient {
+  height: 32px;
+  background: linear-gradient(to bottom, transparent, var(--bg0));
+  pointer-events: none;
+}
+.bottom-btn-area {
+  background: var(--bg0);
+  padding: 0 40px 40px;
+}
+.confirm-btn {
+  width: 100%; height: 48px; border: none; border-radius: 8px;
+  font-family: inherit; font-size: 16px; font-weight: 600; color: #fff;
+  cursor: pointer; transition: all 0.15s;
+}
+.confirm-btn.disabled { background: var(--bg2); color: var(--text-m); cursor: default; }
+.confirm-btn.active { background: var(--blue); }
+.confirm-btn.active:hover { background: #0070dd; }
+
+/* ── Inline Price Editor ── */
+.price-input-hidden {
+  position: absolute; opacity: 0; pointer-events: none;
+  width: 0; height: 0;
+}
+
+/* Utilities */
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="modal">
+  <!-- Header -->
+  <div class="modal-header">
+    <div class="close-btn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M6 6L18 18M18 6L6 18" stroke="var(--text-s)" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="modal-title">Take Profit</div>
+  </div>
+
+  <!-- Content -->
+  <div class="modal-content">
+    <div class="content-inner">
+
+      <!-- Mode Selector -->
+      <div class="mode-selector">
+        <div class="seg-control">
+          <div class="seg-item active" id="segEntire" onclick="setMode('entire')">Entire</div>
+          <div class="seg-item" id="segPartial" onclick="setMode('partial')">Partial</div>
+        </div>
+        <div class="mode-info-btn">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="8.25" stroke="var(--text-t)" stroke-width="1.5"/>
+            <path d="M10 9v4M10 7h.01" stroke="var(--text-t)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Asset Info -->
+      <div class="asset-info">
+        <div class="asset-icon">₿</div>
+        <div class="asset-details">
+          <div class="asset-title-row">
+            <span class="asset-name">BTC</span>
+            <span class="badge badge-long">Long</span>
+            <span class="badge badge-lev">Isolated 1x</span>
+          </div>
+          <span class="asset-mark-price">74,460.1</span>
+        </div>
+        <div class="chart-btn">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 14V6M7 16V4M11 13V7M15 15V5M19 12V8" stroke="var(--text-t)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Order Input -->
+      <div class="order-input">
+        <!-- Limit Order Toggle -->
+        <div class="limit-toggle" id="limitToggle">
+          <div class="checkbox" id="limitCheckbox">
+            <svg width="10" height="8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="limit-toggle-label">Limit Order</span>
+        </div>
+
+        <!-- Trigger Price Card -->
+        <div class="price-card" id="triggerCard" onclick="focusPrice('trigger')">
+          <div class="price-field">
+            <span class="price-label">Trigger Price</span>
+            <div class="price-value-row">
+              <span class="price-value" id="triggerValue">74,202.2</span>
+              <div class="price-offset">
+                <span class="price-pct neutral" id="triggerPct">0.00%</span>
+                <span class="price-from muted" id="triggerFrom">from entry</span>
+              </div>
+            </div>
+          </div>
+          <div class="quick-adjust">
+            <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('trigger', -0.01)">-1%</button>
+            <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('trigger', -0.001)">-0.1%</button>
+            <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('trigger', 0.001)">+0.1%</button>
+            <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('trigger', 0.01)">+1%</button>
+          </div>
+          <div class="price-error hidden" id="triggerError">Please enter a price above the market price.</div>
+        </div>
+
+        <!-- Limit Price Card -->
+        <div class="price-card hidden" id="limitCard" onclick="focusPrice('limit')">
+          <div class="price-field">
+            <div class="price-label-row">
+              <span class="price-label">Limit Price</span>
+              <div class="bbo-toggle" id="bboToggle" onclick="event.stopPropagation(); toggleBBO()">
+                <div class="checkbox" id="bboCheckbox">
+                  <svg width="10" height="8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <span class="bbo-label">BBO</span>
+              </div>
+            </div>
+            <!-- Normal price mode -->
+            <div id="limitNormal">
+              <div class="price-value-row">
+                <span class="price-value" id="limitValue">77,938.5</span>
+                <div class="price-offset">
+                  <span class="price-pct neutral" id="limitPct">0.00%</span>
+                  <span class="price-from muted" id="limitFrom">from entry</span>
+                </div>
+              </div>
+            </div>
+            <!-- BBO mode -->
+            <div id="limitBBO" class="hidden">
+              <div class="bbo-value">Best Counterparty</div>
+            </div>
+          </div>
+          <div id="limitAdjustWrap">
+            <div class="quick-adjust" id="limitAdjust">
+              <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('limit', -0.01)">-1%</button>
+              <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('limit', -0.001)">-0.1%</button>
+              <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('limit', 0.001)">+0.1%</button>
+              <button class="adjust-btn" onclick="event.stopPropagation(); quickAdjust('limit', 0.01)">+1%</button>
+            </div>
+          </div>
+          <div class="price-help hidden" id="limitHelp">Placed as a market order when triggered.</div>
+          <div class="bbo-help hidden" id="bboHelpText">Placed as a limit order at the best available bid/offer when triggered.</div>
+        </div>
+
+        <!-- Set Quantity Card (Partial mode) -->
+        <div class="qty-card hidden" id="qtyCard">
+          <div class="qty-field">
+            <span class="qty-label">Set Quantity</span>
+            <div class="qty-value-row">
+              <span class="qty-value" id="qtyValue">0.000000</span>
+              <span class="qty-unit">BTC</span>
+            </div>
+            <div class="qty-helper-row">
+              <span class="qty-helper" id="qtyUsdt">≈ 0.00 USDT</span>
+              <span class="qty-badge" id="qtyBadge">0%</span>
+            </div>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-track" id="qtySlider">
+              <div class="slider-dot active" data-pct="0"></div>
+              <div class="slider-bar"></div>
+              <div class="slider-dot" data-pct="25"></div>
+              <div class="slider-bar"></div>
+              <div class="slider-dot" data-pct="50"></div>
+              <div class="slider-bar"></div>
+              <div class="slider-dot" data-pct="75"></div>
+              <div class="slider-bar"></div>
+              <div class="slider-dot" data-pct="100"></div>
+              <div class="slider-thumb" id="qtyThumb" style="left:0%"></div>
+            </div>
+            <div class="slider-labels">
+              <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+            </div>
+          </div>
+          <div class="qty-error hidden" id="qtyError">Minimum quantity is 0.000014 BTC</div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="summary">
+        <div class="summary-row">
+          <span class="summary-label primary">Estimated P&L</span>
+          <span class="summary-value" id="pnlValue">0.00 (0.00%)</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Entry Price</span>
+          <span class="summary-value">74,202.2 USDT</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Liquidation Price</span>
+          <span class="summary-value">44.7 USDT</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom -->
+  <div class="modal-bottom">
+    <div class="bottom-gradient"></div>
+    <div class="bottom-btn-area">
+      <button class="confirm-btn disabled" id="confirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden input for price editing -->
+<input type="text" class="price-input-hidden" id="priceInput" inputmode="decimal"
+       onfocus="onPriceFocus()" onblur="onPriceBlur()" oninput="onPriceInput(event)">
+
+<script>
+const ENTRY_PRICE = 74202.2;
+const MARK_PRICE = 74460.1;
+const POSITION_SIZE = 0.1432;
+const POSITION_SIZE_BTC = 0.1432;
+const BTC_USDT_PRICE = 74202.2;
+const MIN_QTY = 0.000014;
+
+let state = {
+  triggerPrice: ENTRY_PRICE,
+  limitPrice: 77938.5,
+  limitOrder: false,
+  bbo: false,
+  activeInput: null,
+  modified: false,
+  partialMode: false,
+  quantityPct: 0,
+};
+
+/* ── Helpers ── */
+function formatPrice(n) {
+  if (n === null || isNaN(n)) return '0';
+  const parts = n.toString().split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+
+function calcPct(price, base) {
+  if (!base || !price) return 0;
+  return ((price - base) / base) * 100;
+}
+
+function formatPct(pct) {
+  const sign = pct > 0 ? '+' : '';
+  return sign + pct.toFixed(2) + '%';
+}
+
+function calcPnL(triggerPrice) {
+  const diff = triggerPrice - ENTRY_PRICE;
+  const pnl = diff * POSITION_SIZE;
+  const pct = calcPct(triggerPrice, ENTRY_PRICE);
+  return { pnl, pct };
+}
+
+/* ── UI Update ── */
+function updateUI() {
+  // Trigger card
+  const trigVal = document.getElementById('triggerValue');
+  const trigPct = document.getElementById('triggerPct');
+  const trigFrom = document.getElementById('triggerFrom');
+
+  if (state.activeInput === 'trigger') {
+    const inp = document.getElementById('priceInput');
+    if (inp.value === '') {
+      trigVal.innerHTML = '<span style="color:var(--text-m)">Enter Price</span><span class="cursor"></span>';
+      trigVal.classList.add('placeholder');
+    } else {
+      trigVal.innerHTML = formatPrice(parseFloat(inp.value) || inp.value) + '<span class="cursor"></span>';
+      trigVal.classList.remove('placeholder');
+    }
+  } else {
+    trigVal.textContent = formatPrice(state.triggerPrice);
+    trigVal.classList.remove('placeholder');
+  }
+
+  const trigPctVal = calcPct(state.triggerPrice, ENTRY_PRICE);
+  trigPct.textContent = formatPct(trigPctVal);
+  trigPct.className = 'price-pct ' + (trigPctVal > 0 ? 'positive' : trigPctVal < 0 ? 'negative' : 'neutral');
+
+  // Error: trigger below market for TP
+  const trigError = state.triggerPrice < MARK_PRICE && state.triggerPrice !== ENTRY_PRICE;
+  document.getElementById('triggerError').classList.toggle('hidden', !trigError);
+
+  // Limit card
+  document.getElementById('limitCard').classList.toggle('hidden', !state.limitOrder);
+
+  if (state.limitOrder) {
+    const limVal = document.getElementById('limitValue');
+    const limPct = document.getElementById('limitPct');
+
+    document.getElementById('limitNormal').classList.toggle('hidden', state.bbo);
+    document.getElementById('limitBBO').classList.toggle('hidden', !state.bbo);
+    document.getElementById('limitAdjustWrap').classList.toggle('hidden', state.bbo);
+    document.getElementById('limitHelp').classList.toggle('hidden', state.bbo);
+    document.getElementById('bboHelpText').classList.toggle('hidden', !state.bbo);
+    document.getElementById('limitCard').classList.toggle('bbo-active', state.bbo);
+
+    document.getElementById('bboCheckbox').classList.toggle('checked', state.bbo);
+
+    if (!state.bbo) {
+      if (state.activeInput === 'limit') {
+        const inp = document.getElementById('priceInput');
+        if (inp.value === '') {
+          limVal.innerHTML = '<span style="color:var(--text-m)">Enter Price</span><span class="cursor"></span>';
+        } else {
+          limVal.innerHTML = formatPrice(parseFloat(inp.value) || inp.value) + '<span class="cursor"></span>';
+        }
+      } else {
+        limVal.textContent = formatPrice(state.limitPrice);
+      }
+      const limPctVal = calcPct(state.limitPrice, ENTRY_PRICE);
+      limPct.textContent = formatPct(limPctVal);
+      limPct.className = 'price-pct ' + (limPctVal > 0 ? 'positive' : limPctVal < 0 ? 'negative' : 'neutral');
+    }
+  }
+
+  // Summary P&L
+  const { pnl, pct } = calcPnL(state.triggerPrice);
+  const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + ' (' + formatPct(pct) + ')';
+  const pnlClass = pnl > 0 ? 'positive' : pnl < 0 ? 'negative' : 'neutral';
+
+  document.getElementById('pnlValue').textContent = pnl === 0 ? '0.00 (0.00%)' : pnlStr;
+  document.getElementById('pnlValue').className = 'summary-value ' + pnlClass;
+
+  // Confirm button
+  state.modified = state.triggerPrice !== ENTRY_PRICE;
+  const btn = document.getElementById('confirmBtn');
+  btn.className = 'confirm-btn ' + (state.modified ? 'active' : 'disabled');
+
+  // Limit Order checkbox
+  document.getElementById('limitCheckbox').classList.toggle('checked', state.limitOrder);
+
+  // Mode-specific visibility
+  document.getElementById('qtyCard').classList.toggle('hidden', !state.partialMode);
+
+  if (state.partialMode) updateQtyUI();
+}
+
+/* ── Price Editing ── */
+function focusPrice(which) {
+  if (which === 'limit' && state.bbo) return;
+  state.activeInput = which;
+  const inp = document.getElementById('priceInput');
+  const currentPrice = which === 'trigger' ? state.triggerPrice : state.limitPrice;
+  inp.value = currentPrice.toString();
+  inp.style.position = 'fixed';
+  inp.style.left = '-9999px';
+  inp.focus();
+  updateUI();
+}
+
+function onPriceFocus() {}
+
+function onPriceBlur() {
+  const inp = document.getElementById('priceInput');
+  const val = parseFloat(inp.value);
+  if (state.activeInput === 'trigger') {
+    state.triggerPrice = val > 0 ? val : ENTRY_PRICE;
+  } else if (state.activeInput === 'limit') {
+    state.limitPrice = val > 0 ? val : state.triggerPrice;
+  }
+  state.activeInput = null;
+  updateUI();
+}
+
+function onPriceInput(e) {
+  const inp = document.getElementById('priceInput');
+  const val = parseFloat(inp.value);
+  if (state.activeInput === 'trigger' && val > 0) {
+    state.triggerPrice = val;
+  } else if (state.activeInput === 'limit' && val > 0) {
+    state.limitPrice = val;
+  }
+  updateUI();
+}
+
+/* ── Quick Adjust ── */
+function quickAdjust(which, pct) {
+  if (which === 'trigger') {
+    state.triggerPrice = Math.round(state.triggerPrice * (1 + pct) * 10) / 10;
+    if (state.activeInput === 'trigger') {
+      document.getElementById('priceInput').value = state.triggerPrice.toString();
+    }
+  } else {
+    state.limitPrice = Math.round(state.limitPrice * (1 + pct) * 10) / 10;
+    if (state.activeInput === 'limit') {
+      document.getElementById('priceInput').value = state.limitPrice.toString();
+    }
+  }
+  updateUI();
+}
+
+/* ── Toggles ── */
+document.getElementById('limitToggle').addEventListener('click', () => {
+  state.limitOrder = !state.limitOrder;
+  if (state.limitOrder) state.limitPrice = state.triggerPrice;
+  updateUI();
+});
+
+function toggleBBO() {
+  state.bbo = !state.bbo;
+  updateUI();
+}
+
+/* ── Mode Switch ── */
+function setMode(mode) {
+  const isPartial = mode === 'partial';
+  if (state.partialMode === isPartial) return;
+  state.partialMode = isPartial;
+
+  document.getElementById('segEntire').classList.toggle('active', !state.partialMode);
+  document.getElementById('segPartial').classList.toggle('active', state.partialMode);
+
+  if (state.activeInput) {
+    document.getElementById('priceInput').blur();
+  }
+
+  if (state.partialMode) {
+    state.limitOrder = false;
+    state.bbo = false;
+  }
+
+  updateUI();
+}
+
+/* ── Quantity UI ── */
+function updateQtyUI() {
+  if (!state.partialMode) return;
+
+  const quantity = POSITION_SIZE_BTC * state.quantityPct / 100;
+  const usdt = quantity * BTC_USDT_PRICE;
+
+  document.getElementById('qtyValue').textContent = quantity.toFixed(6);
+  document.getElementById('qtyUsdt').textContent = '≈ ' + usdt.toFixed(2) + ' USDT';
+  document.getElementById('qtyBadge').textContent = Math.round(state.quantityPct) + '%';
+
+  const hasQtyError = quantity > 0 && quantity < MIN_QTY;
+  document.getElementById('qtyError').classList.toggle('hidden', !hasQtyError);
+
+  const slider = document.getElementById('qtySlider');
+  const dots = slider.querySelectorAll('.slider-dot');
+  const bars = slider.querySelectorAll('.slider-bar');
+  const steps = [0, 25, 50, 75, 100];
+
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('active', steps[i] <= state.quantityPct);
+  });
+  bars.forEach((bar, i) => {
+    const barStart = steps[i];
+    const barEnd = steps[i + 1];
+    if (state.quantityPct >= barEnd) {
+      bar.classList.add('active');
+      bar.style.background = '';
+    } else if (state.quantityPct > barStart) {
+      const p = ((state.quantityPct - barStart) / (barEnd - barStart)) * 100;
+      bar.style.background = 'linear-gradient(to right, var(--blue) ' + p + '%, var(--bg3) ' + p + '%)';
+      bar.classList.remove('active');
+    } else {
+      bar.classList.remove('active');
+      bar.style.background = '';
+    }
+  });
+
+  document.getElementById('qtyThumb').style.left = state.quantityPct + '%';
+}
+
+/* ── Slider ── */
+(function initSlider() {
+  const slider = document.getElementById('qtySlider');
+  let dragging = false;
+
+  function getPctFromX(clientX) {
+    const rect = slider.getBoundingClientRect();
+    return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+  }
+
+  function snap(pct) {
+    const steps = [0, 25, 50, 75, 100];
+    let closest = steps[0];
+    for (const s of steps) {
+      if (Math.abs(pct - s) < Math.abs(pct - closest)) closest = s;
+    }
+    return Math.abs(pct - closest) < 4 ? closest : Math.round(pct);
+  }
+
+  slider.addEventListener('pointerdown', e => {
+    dragging = true;
+    slider.setPointerCapture(e.pointerId);
+    state.quantityPct = snap(getPctFromX(e.clientX));
+    updateQtyUI();
+  });
+  slider.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    state.quantityPct = snap(getPctFromX(e.clientX));
+    updateQtyUI();
+  });
+  slider.addEventListener('pointerup', () => { dragging = false; });
+  slider.addEventListener('pointercancel', () => { dragging = false; });
+})();
+
+// Init
+updateUI();
+</script>
+</body>
+</html>

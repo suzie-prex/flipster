@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TP/SL Limit Order Prototype</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<style>
+:root {
+  --bg0: #111111;
+  --bg1: #1c1c1c;
+  --bg2: #2a2a2a;
+  --bg3: #3a3a3a;
+  --text-p: #eeeeee;
+  --text-s: #b4b4b4;
+  --text-t: #959595;
+  --text-m: #7b7b7b;
+  --positive: #34c759;
+  --negative: #ff453a;
+  --blue: #0a84ff;
+  --border: #2a2a2a;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0e0e11;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.phone {
+  width: 390px;
+  min-height: 100vh;
+  background: var(--bg0);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Status Bar */
+.status-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 24px 4px; height: 44px;
+}
+.status-time { font-family: 'Roboto', sans-serif; font-size: 15px; font-weight: 600; color: #fff; }
+.status-icons { display: flex; gap: 6px; align-items: center; }
+.status-icons svg { display: block; }
+
+/* Top Bar */
+.top-bar {
+  display: flex; align-items: center; justify-content: center;
+  position: relative; height: 44px; padding: 0 16px;
+}
+.top-bar-title { font-size: 16px; font-weight: 600; color: var(--text-p); letter-spacing: -0.015em; }
+.top-bar-close {
+  position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 50%;
+}
+
+/* Coin Info */
+.coin-info { display: flex; align-items: center; padding: 12px 16px; gap: 8px; }
+.coin-icon {
+  width: 32px; height: 32px; border-radius: 50%; background: #f7931a;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.coin-name { font-size: 16px; font-weight: 600; color: var(--text-p); letter-spacing: -0.015em; }
+.badge {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 2px 6px; border-radius: 100px; font-size: 11px; font-weight: 600;
+}
+.badge-long { background: rgba(52,199,89,0.15); color: var(--positive); border: 1px solid #216331; }
+.badge-lev { background: rgba(238,238,238,0.1); color: var(--text-s); }
+.coin-price { font-size: 14px; color: var(--text-s); margin-top: 2px; }
+.coin-left { display: flex; flex-direction: column; gap: 2px; }
+.coin-left-top { display: flex; align-items: center; gap: 6px; }
+.coin-right { margin-left: auto; }
+
+/* TP/SL Tabs */
+.tp-sl-tabs { display: flex; padding: 0 16px; margin-bottom: 4px; }
+.tp-sl-tab {
+  flex: 1; height: 40px; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 400; color: var(--text-t);
+  cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; user-select: none;
+}
+.tp-sl-tab.active { color: var(--text-p); font-weight: 600; border-bottom-color: var(--text-p); }
+
+/* Form */
+.form-area { padding: 16px; }
+.form-card {
+  background: var(--bg1); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 16px;
+}
+
+/* Trigger / Limit Price */
+.price-section { display: flex; flex-direction: column; gap: 6px; }
+.price-header { display: flex; justify-content: space-between; align-items: center; }
+.price-label { font-size: 14px; color: var(--text-s); }
+.trigger-basis {
+  display: flex; align-items: center; gap: 4px; cursor: pointer;
+  padding: 2px 4px; border-radius: 4px;
+}
+.trigger-basis span { font-size: 12px; color: var(--text-t); }
+.trigger-basis svg { display: block; }
+.price-value-row { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.price-value {
+  font-size: 24px; font-weight: 600; color: var(--text-p); letter-spacing: -0.015em;
+}
+.price-value .cursor {
+  display: inline-block; width: 2px; height: 24px; background: var(--blue);
+  vertical-align: text-bottom; animation: blink 1s step-end infinite;
+}
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+.price-pct { display: flex; align-items: center; gap: 4px; font-size: 14px; white-space: nowrap; }
+.price-pct-val { color: var(--text-t); }
+.price-pct-label { color: var(--text-t); }
+
+/* Execution Type Row — the key simplification */
+.exec-type-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-top: 1px solid var(--border); cursor: pointer;
+  user-select: none;
+}
+.exec-type-row:active { opacity: 0.7; }
+.exec-type-left { font-size: 14px; color: var(--text-s); }
+.exec-type-right { display: flex; align-items: center; gap: 4px; }
+.exec-type-value { font-size: 14px; font-weight: 500; color: var(--text-p); }
+.exec-type-right svg { display: block; }
+
+/* Limit price (animated reveal) */
+.limit-section {
+  overflow: hidden; transition: max-height 0.3s ease, opacity 0.25s ease;
+  max-height: 0; opacity: 0;
+}
+.limit-section.show { max-height: 140px; opacity: 1; }
+.limit-section-inner { padding-top: 0; }
+
+/* BBO indicator */
+.bbo-indicator {
+  overflow: hidden; transition: max-height 0.3s ease, opacity 0.25s ease;
+  max-height: 0; opacity: 0;
+}
+.bbo-indicator.show { max-height: 40px; opacity: 1; }
+.bbo-indicator-inner {
+  display: flex; align-items: center; gap: 8px; padding-top: 0;
+}
+.bbo-tag {
+  font-size: 14px; font-weight: 600; color: var(--blue);
+}
+
+/* Warning */
+.warning-text {
+  font-size: 12px; color: var(--text-t); line-height: 1.4;
+  overflow: hidden; transition: max-height 0.3s ease, opacity 0.25s ease;
+  max-height: 0; opacity: 0;
+}
+.warning-text.show { max-height: 60px; opacity: 1; }
+.warning-text.sl-warning { color: var(--negative); }
+
+/* Pct Buttons */
+.pct-buttons { display: flex; gap: 6px; }
+.pct-btn {
+  flex: 1; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: var(--bg2); border: none;
+  font-size: 12px; color: var(--text-s); cursor: pointer;
+  font-family: 'Pretendard', sans-serif; user-select: none;
+}
+.pct-btn:active { background: var(--bg3); }
+
+/* Order Info */
+.order-info {
+  background: var(--bg2); border-radius: 8px; padding: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.order-info-row { display: flex; gap: 4px; font-size: 13px; line-height: 1.5; }
+.order-info-label { color: var(--text-t); }
+.order-info-value { color: var(--text-p); font-weight: 500; }
+.order-info-note { font-size: 12px; color: var(--text-m); margin-top: 2px; }
+.order-info-note a { color: var(--text-s); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Estimated P&L */
+.est-pnl { display: flex; justify-content: space-between; align-items: center; }
+.est-pnl-left { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--text-s); }
+.est-pnl-left svg { display: block; }
+.est-pnl-value { font-size: 14px; color: var(--text-t); }
+
+/* Bottom */
+.bottom-area {
+  position: fixed; bottom: 0; width: 390px;
+  background: var(--bg0); padding: 16px; padding-bottom: 32px;
+}
+.confirm-btn {
+  width: 100%; height: 48px; background: var(--blue); border: none; border-radius: 8px;
+  font-size: 16px; font-weight: 600; color: #fff; cursor: pointer;
+  font-family: 'Pretendard', sans-serif;
+}
+.confirm-btn:active { opacity: 0.8; }
+
+/* Keypad */
+.keypad {
+  position: fixed; bottom: 0; width: 390px; background: var(--bg0);
+  border-top: 1px solid var(--border); display: none; flex-direction: column;
+  padding-bottom: 20px; z-index: 100;
+}
+.keypad.show { display: flex; }
+.keypad-confirm { padding: 12px 16px; }
+.keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+.key {
+  height: 52px; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: var(--text-p); cursor: pointer; user-select: none;
+  font-family: 'Pretendard', sans-serif;
+}
+.key:active { background: rgba(255,255,255,0.05); }
+.key svg { display: block; }
+
+/* ===== Bottom Sheet ===== */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  opacity: 0; visibility: hidden; transition: opacity 0.25s, visibility 0.25s;
+  z-index: 200;
+}
+.overlay.show { opacity: 1; visibility: visible; }
+
+.bottom-sheet {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+  width: 390px; background: var(--bg1); border-radius: 16px 16px 0 0;
+  padding: 0 0 32px; z-index: 201; transition: transform 0.3s ease;
+}
+.bottom-sheet.show { transform: translateX(-50%) translateY(0); }
+
+.sheet-handle {
+  display: flex; justify-content: center; padding: 12px 0 8px;
+}
+.sheet-handle-bar {
+  width: 36px; height: 4px; background: var(--bg3); border-radius: 2px;
+}
+.sheet-title {
+  font-size: 16px; font-weight: 600; color: var(--text-p);
+  padding: 4px 20px 16px; letter-spacing: -0.015em;
+}
+.sheet-options { padding: 0 16px; display: flex; flex-direction: column; gap: 4px; }
+
+.sheet-option {
+  display: flex; align-items: center; padding: 14px 16px;
+  border-radius: 12px; cursor: pointer; transition: background 0.15s;
+  gap: 12px;
+}
+.sheet-option:active { background: rgba(255,255,255,0.03); }
+.sheet-option.selected { background: rgba(255,255,255,0.05); }
+
+.sheet-option-content { flex: 1; }
+.sheet-option-label {
+  font-size: 15px; font-weight: 500; color: var(--text-p);
+  display: flex; align-items: center; gap: 6px;
+}
+.sheet-option-desc { font-size: 13px; color: var(--text-t); margin-top: 2px; line-height: 1.4; }
+.sheet-option-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.sheet-option.selected .sheet-option-check {
+  border-color: var(--blue); background: var(--blue);
+}
+.sheet-option-badge {
+  font-size: 10px; font-weight: 600; color: var(--blue);
+  background: rgba(10,132,255,0.15); padding: 1px 6px; border-radius: 100px;
+  letter-spacing: 0.02em;
+}
+
+.bottom-spacer { height: 300px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span class="status-time">09:30 PM</span>
+    <div class="status-icons">
+      <svg width="16" height="16" fill="none"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z" stroke="#fff" stroke-width="1.2"/><path d="M8 5v3l2 2" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="#fff"><rect x="1" y="7" width="3" height="6" rx="0.5"/><rect x="5" y="5" width="3" height="8" rx="0.5"/><rect x="9" y="3" width="3" height="10" rx="0.5"/><rect x="13" y="1" width="3" height="12" rx="0.5" opacity="0.3"/></svg>
+      <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="0.5" y="0.5" width="20" height="11" rx="2" stroke="#fff" stroke-opacity="0.35"/><rect x="22" y="4" width="1.5" height="4" rx="0.5" fill="#fff" fill-opacity="0.4"/><rect x="2" y="2" width="14" height="7" rx="1" fill="#fff"/></svg>
+    </div>
+  </div>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <span class="top-bar-title" id="topBarTitle">Take Profit</span>
+    <div class="top-bar-close"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="#999" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+  </div>
+
+  <!-- TP / SL Tabs -->
+  <div class="tp-sl-tabs">
+    <div class="tp-sl-tab active" data-tab="tp">Take Profit</div>
+    <div class="tp-sl-tab" data-tab="sl">Stop Loss</div>
+  </div>
+
+  <!-- Coin Info -->
+  <div class="coin-info">
+    <div class="coin-icon">₿</div>
+    <div class="coin-left">
+      <div class="coin-left-top">
+        <span class="coin-name">BTC</span>
+        <span class="badge badge-long">Long ↗</span>
+        <span class="badge badge-lev">Isolated 1x</span>
+      </div>
+      <span class="coin-price">122,018.0</span>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="form-area">
+    <div class="form-card">
+
+      <!-- Trigger Price -->
+      <div class="price-section">
+        <div class="price-header">
+          <span class="price-label">Trigger price</span>
+        </div>
+        <div class="price-value-row" data-field="trigger">
+          <span class="price-value" id="triggerValue">122,018.0<span class="cursor"></span></span>
+          <div class="price-pct">
+            <span class="price-pct-val" id="triggerPct">+0.00%</span>
+            <span class="price-pct-label">from entry</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Type — simple settings row -->
+      <div class="exec-type-row" id="execTypeRow">
+        <span class="exec-type-left">Execution</span>
+        <div class="exec-type-right">
+          <span class="exec-type-value" id="execTypeValue">Market</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="#959595" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <!-- Limit Price (revealed when Limit selected) -->
+      <div class="limit-section" id="limitSection">
+        <div class="limit-section-inner">
+          <div class="price-section">
+            <span class="price-label">Limit price</span>
+            <div class="price-value-row" data-field="limit">
+              <span class="price-value" id="limitValue">122,018.0<span class="cursor" style="display:none"></span></span>
+              <div class="price-pct">
+                <span class="price-pct-val" id="limitPct">+0.00%</span>
+                <span class="price-pct-label">from trigger</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BBO indicator (revealed when BBO selected) -->
+      <div class="bbo-indicator" id="bboIndicator">
+        <div class="bbo-indicator-inner">
+          <span class="price-label">Limit price</span>
+          <span class="bbo-tag">Best Bid / Offer</span>
+        </div>
+      </div>
+
+      <!-- Warning -->
+      <div class="warning-text" id="warningText"></div>
+
+      <!-- Pct Buttons -->
+      <div class="pct-buttons">
+        <div class="pct-btn" data-pct="-1">-1%</div>
+        <div class="pct-btn" data-pct="-0.1">-0.1%</div>
+        <div class="pct-btn" data-pct="0.1">+0.1%</div>
+        <div class="pct-btn" data-pct="1">+1%</div>
+      </div>
+
+      <!-- Order Info -->
+      <div class="order-info">
+        <div class="order-info-row">
+          <span class="order-info-label">Order price:</span>
+          <span class="order-info-value" id="orderPrice">Market</span>
+        </div>
+        <div class="order-info-row">
+          <span class="order-info-label">Liquidation price:</span>
+          <span class="order-info-value">101,022.0</span>
+        </div>
+        <div class="order-info-note">
+          If <a href="#">mark price</a> reaches liq. price, liquidation occurs
+        </div>
+      </div>
+
+      <!-- Estimated P&L -->
+      <div class="est-pnl">
+        <div class="est-pnl-left">
+          <span>Estimated P&L</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#959595" stroke-width="1"/><path d="M8 7v4" stroke="#959595" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="5" r="0.7" fill="#959595"/></svg>
+        </div>
+        <span class="est-pnl-value">0.00 (0.00%)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-spacer"></div>
+
+  <!-- Bottom Confirm -->
+  <div class="bottom-area" id="bottomArea">
+    <button class="confirm-btn">Confirm</button>
+  </div>
+
+  <!-- Keypad -->
+  <div class="keypad" id="keypad">
+    <div class="keypad-confirm"><button class="confirm-btn" id="keypadConfirmBtn">Confirm</button></div>
+    <div class="keypad-grid">
+      <div class="key" data-key="1">1</div><div class="key" data-key="2">2</div><div class="key" data-key="3">3</div>
+      <div class="key" data-key="4">4</div><div class="key" data-key="5">5</div><div class="key" data-key="6">6</div>
+      <div class="key" data-key="7">7</div><div class="key" data-key="8">8</div><div class="key" data-key="9">9</div>
+      <div class="key" data-key=".">.</div><div class="key" data-key="0">0</div>
+      <div class="key" data-key="del"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9.5 7L4 12l5.5 5M20 7v10" stroke="#eee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 9l8 6M18 9l-8 6" stroke="#eee" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+    </div>
+  </div>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Bottom Sheet -->
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="sheet-handle"><div class="sheet-handle-bar"></div></div>
+    <div class="sheet-title">Execution type</div>
+    <div class="sheet-options">
+      <div class="sheet-option selected" data-type="market">
+        <div class="sheet-option-content">
+          <div class="sheet-option-label">Market</div>
+          <div class="sheet-option-desc">Executes at market price when triggered. Fastest fill, but price may vary.</div>
+        </div>
+        <div class="sheet-option-check">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 5-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      <div class="sheet-option" data-type="limit">
+        <div class="sheet-option-content">
+          <div class="sheet-option-label">Limit <span class="sheet-option-badge">NEW</span></div>
+          <div class="sheet-option-desc">Places a limit order at your specified price. No slippage, but may not fill.</div>
+        </div>
+        <div class="sheet-option-check">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 5-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+      <div class="sheet-option" data-type="bbo">
+        <div class="sheet-option-content">
+          <div class="sheet-option-label">BBO <span class="sheet-option-badge">NEW</span></div>
+          <div class="sheet-option-desc">Limit order at best bid/offer. High fill rate with potential maker rebate.</div>
+        </div>
+        <div class="sheet-option-check">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 5-5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ENTRY_PRICE = 122018.0;
+
+const state = {
+  activeTab: 'tp',
+  orderType: 'market',
+  triggerPrice: '122018.0',
+  limitPrice: '122018.0',
+  activeField: null,
+  editing: false,
+  sheetOpen: false
+};
+
+// DOM refs
+const execTypeRow = document.getElementById('execTypeRow');
+const execTypeValue = document.getElementById('execTypeValue');
+const limitSection = document.getElementById('limitSection');
+const bboIndicator = document.getElementById('bboIndicator');
+const warningText = document.getElementById('warningText');
+const triggerValue = document.getElementById('triggerValue');
+const limitValue = document.getElementById('limitValue');
+const triggerPct = document.getElementById('triggerPct');
+const limitPct = document.getElementById('limitPct');
+const keypad = document.getElementById('keypad');
+const bottomArea = document.getElementById('bottomArea');
+const topBarTitle = document.getElementById('topBarTitle');
+const orderPrice = document.getElementById('orderPrice');
+const overlay = document.getElementById('overlay');
+const bottomSheet = document.getElementById('bottomSheet');
+
+const EXEC_LABELS = { market: 'Market', limit: 'Limit', bbo: 'BBO' };
+const WARNINGS = {
+  tp: {
+    limit: 'Limit order may not execute if the market does not reach your limit price.',
+    bbo: 'Limit price will be set to best bid/offer at trigger time.'
+  },
+  sl: {
+    limit: 'Unfilled SL limit order may increase liquidation risk.',
+    bbo: 'Limit price will be set to best bid/offer at trigger time.'
+  }
+};
+
+// --- Tabs ---
+document.querySelectorAll('.tp-sl-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    state.activeTab = tab.dataset.tab;
+    document.querySelectorAll('.tp-sl-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    topBarTitle.textContent = state.activeTab === 'tp' ? 'Take Profit' : 'Stop Loss';
+    updateUI();
+  });
+});
+
+// --- Execution Type Row → Open Sheet ---
+execTypeRow.addEventListener('click', () => {
+  state.sheetOpen = true;
+  overlay.classList.add('show');
+  bottomSheet.classList.add('show');
+});
+
+// --- Close Sheet ---
+overlay.addEventListener('click', closeSheet);
+function closeSheet() {
+  state.sheetOpen = false;
+  overlay.classList.remove('show');
+  bottomSheet.classList.remove('show');
+}
+
+// --- Sheet Option Selection ---
+document.querySelectorAll('.sheet-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    state.orderType = opt.dataset.type;
+    document.querySelectorAll('.sheet-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    setTimeout(closeSheet, 200);
+    updateUI();
+  });
+});
+
+// --- Pct Buttons ---
+document.querySelectorAll('.pct-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pct = parseFloat(btn.dataset.pct);
+    const field = state.activeField || 'trigger';
+    const val = parseFloat(field === 'trigger' ? state.triggerPrice : state.limitPrice);
+    const newVal = (val * (1 + pct / 100)).toFixed(1);
+    if (field === 'trigger') {
+      state.triggerPrice = newVal;
+      if (state.orderType === 'limit') state.limitPrice = newVal;
+    } else {
+      state.limitPrice = newVal;
+    }
+    updateValues();
+  });
+});
+
+// --- Field Tap ---
+document.querySelectorAll('[data-field]').forEach(row => {
+  row.addEventListener('click', () => {
+    state.activeField = row.dataset.field;
+    state.editing = true;
+    updateUI();
+  });
+});
+
+// --- Keypad ---
+document.querySelectorAll('.key').forEach(key => {
+  key.addEventListener('click', () => {
+    if (!state.editing) return;
+    const k = key.dataset.key;
+    const f = state.activeField === 'limit' ? 'limitPrice' : 'triggerPrice';
+    if (k === 'del') { state[f] = state[f].slice(0, -1) || '0'; }
+    else if (k === '.') { if (!state[f].includes('.')) state[f] += '.'; }
+    else { state[f] = state[f] === '0' ? k : state[f] + k; }
+    updateValues();
+  });
+});
+
+document.getElementById('keypadConfirmBtn').addEventListener('click', () => {
+  state.editing = false;
+  state.activeField = null;
+  updateUI();
+});
+
+// --- Helpers ---
+function fmt(s) {
+  const parts = s.split('.');
+  const int = parseInt(parts[0]).toLocaleString('en-US');
+  return parts.length > 1 ? int + '.' + parts[1] : int;
+}
+function pct(s) {
+  const p = ((parseFloat(s) - ENTRY_PRICE) / ENTRY_PRICE * 100).toFixed(2);
+  return (p >= 0 ? '+' : '') + p + '%';
+}
+
+// --- Update ---
+function updateValues() {
+  triggerValue.innerHTML = fmt(state.triggerPrice) +
+    (state.editing && state.activeField === 'trigger' ? '<span class="cursor"></span>' : '');
+  triggerPct.textContent = pct(state.triggerPrice);
+  const tv = parseFloat(triggerPct.textContent);
+  triggerPct.style.color = tv > 0 ? 'var(--positive)' : tv < 0 ? 'var(--negative)' : 'var(--text-t)';
+
+  limitValue.innerHTML = fmt(state.limitPrice) +
+    (state.editing && state.activeField === 'limit' ? '<span class="cursor"></span>' : '');
+  limitPct.textContent = pct(state.limitPrice);
+
+  orderPrice.textContent = state.orderType === 'market' ? 'Market' :
+    state.orderType === 'limit' ? fmt(state.limitPrice) : 'BBO';
+}
+
+function updateUI() {
+  execTypeValue.textContent = EXEC_LABELS[state.orderType];
+  limitSection.classList.toggle('show', state.orderType === 'limit');
+  bboIndicator.classList.toggle('show', state.orderType === 'bbo');
+
+  const w = WARNINGS[state.activeTab]?.[state.orderType];
+  if (w) {
+    warningText.textContent = w;
+    warningText.classList.add('show');
+    warningText.classList.toggle('sl-warning', state.activeTab === 'sl' && state.orderType === 'limit');
+  } else {
+    warningText.classList.remove('show', 'sl-warning');
+  }
+
+  keypad.classList.toggle('show', state.editing);
+  bottomArea.style.display = state.editing ? 'none' : 'block';
+  updateValues();
+}
+
+updateUI();
+</script>
+</body>
+</html>
