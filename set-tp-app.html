@@ -86,7 +86,7 @@ body {
   display: flex; flex-direction: column; gap: 16px;
 }
 .content-inner.kb-open {
-  padding-bottom: 160px;
+  padding-bottom: 16px;
 }
 
 /* Mode Selector */
@@ -981,11 +981,13 @@ function numInput(key) {
     setSliderValue(pct);
   }
 
-  // Prevent slider interactions from opening keyboard
-  slider.addEventListener('click', function(e) { e.stopPropagation(); });
+  // Prevent slider interactions from bubbling to card/content
+  var sliderWrap = slider.closest('.slider-wrap');
+  sliderWrap.addEventListener('click', function(e) { e.stopPropagation(); });
 
   // Touch events
   slider.addEventListener('touchstart', function(e) {
+    e.preventDefault();
     e.stopPropagation();
     dragging = true;
     handleMove(e.touches[0].clientX);
@@ -998,8 +1000,24 @@ function numInput(key) {
 
   document.addEventListener('touchend', function() { dragging = false; });
 
+  // Touch on slider-wrap (labels area)
+  sliderWrap.addEventListener('touchstart', function(e) {
+    if (e.target.closest('.slider-track')) return; // already handled above
+    e.preventDefault();
+    e.stopPropagation();
+    dragging = true;
+    handleMove(e.touches[0].clientX);
+  }, { passive: false });
+
   // Mouse events
   slider.addEventListener('mousedown', function(e) {
+    e.stopPropagation();
+    dragging = true;
+    handleMove(e.clientX);
+  });
+
+  sliderWrap.addEventListener('mousedown', function(e) {
+    if (e.target.closest('.slider-track')) return;
     e.stopPropagation();
     dragging = true;
     handleMove(e.clientX);
