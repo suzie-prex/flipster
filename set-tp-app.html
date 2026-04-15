@@ -962,6 +962,15 @@ function numInput(key) {
       dot.classList.toggle('active', rounded >= dotPct);
     });
 
+    // Switch cursor to quantity field when keyboard is open
+    if (keyboardOpen) {
+      if (editingField !== 'quantity') {
+        saveCurrentField();
+        editingField = 'quantity';
+      }
+      inputBuffer = getQuantityBTC().toFixed(6);
+    }
+
     updateQtyUI();
     updateUI();
   }
