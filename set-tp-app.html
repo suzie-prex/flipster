@@ -800,13 +800,17 @@ function quickAdjust(field, pctDelta) {
 
   // Switch cursor to the adjusted field
   if (keyboardOpen) {
-    if (editingField !== field) {
+    var switched = editingField !== field;
+    if (switched) {
       saveCurrentField();
       editingField = field;
     }
     inputBuffer = (field === 'trigger' ? triggerPrice : limitPrice).toString();
+    updateUI();
+    if (switched) scrollToActiveCard(field);
+  } else {
+    updateUI();
   }
-  updateUI();
 }
 
 /* === Keyboard === */
@@ -839,32 +843,43 @@ function scrollToActiveCard(field) {
   var content = document.getElementById('content');
   if (!card || !content) return;
 
-  // Calculate the content visible height AFTER keyboard opens
-  // phone(800) - statusBar(32) - topBar(42) - keyboard(~397) = ~329
   var kb = document.getElementById('keyboard');
-  var kbHeight = kb.scrollHeight; // actual content height even when collapsed
+  var kbHeight = kb.scrollHeight;
   var phone = document.querySelector('.phone');
   var statusBar = document.querySelector('.status-bar');
   var topBar = document.querySelector('.top-bar');
   var availableH = phone.offsetHeight - statusBar.offsetHeight - topBar.offsetHeight - kbHeight;
 
-  // Card position within scroll container
-  var cardBottom = card.offsetTop + card.offsetHeight;
-  var targetScroll = cardBottom - availableH + 24;
+  var cardTop = card.offsetTop;
+  var cardBottom = cardTop + card.offsetHeight;
+  var visibleTop = content.scrollTop;
+  var visibleBottom = visibleTop + availableH;
+  var targetScroll;
 
-  if (targetScroll > 0 && targetScroll > content.scrollTop) {
-    var start = content.scrollTop;
-    var diff = targetScroll - start;
-    var duration = 350;
-    var startTime = Date.now();
-    var timer = setInterval(function() {
-      var elapsed = Date.now() - startTime;
-      var t = Math.min(elapsed / duration, 1);
-      var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      content.scrollTop = start + diff * ease;
-      if (t >= 1) clearInterval(timer);
-    }, 16);
+  if (cardBottom > visibleBottom - 24) {
+    // Card below visible area → scroll down
+    targetScroll = cardBottom - availableH + 24;
+  } else if (cardTop < visibleTop + 16) {
+    // Card above visible area → scroll up
+    targetScroll = cardTop - 16;
+  } else {
+    return; // card is fully visible
   }
+
+  targetScroll = Math.max(0, targetScroll);
+  var start = content.scrollTop;
+  var diff = targetScroll - start;
+  if (Math.abs(diff) < 2) return;
+
+  var duration = 300;
+  var startTime = Date.now();
+  var timer = setInterval(function() {
+    var elapsed = Date.now() - startTime;
+    var t = Math.min(elapsed / duration, 1);
+    var ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    content.scrollTop = start + diff * ease;
+    if (t >= 1) clearInterval(timer);
+  }, 16);
 }
 
 function saveCurrentField() {
@@ -963,16 +978,19 @@ function numInput(key) {
     });
 
     // Switch cursor to quantity field when keyboard is open
+    var switched = false;
     if (keyboardOpen) {
       if (editingField !== 'quantity') {
         saveCurrentField();
         editingField = 'quantity';
+        switched = true;
       }
       inputBuffer = getQuantityBTC().toFixed(6);
     }
 
     updateQtyUI();
     updateUI();
+    if (switched) scrollToActiveCard('quantity');
   }
 
   function handleMove(clientX) {
