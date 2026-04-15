@@ -826,7 +826,7 @@ function openKeyboard(field) {
 
   editingField = newField;
   if (newField === 'quantity') {
-    inputBuffer = getQuantityBTC().toFixed(6);
+    inputBuffer = quantityPct === 0 ? '' : getQuantityBTC().toFixed(6);
   } else {
     inputBuffer = (newField === 'trigger' ? triggerPrice : limitPrice).toString();
   }
