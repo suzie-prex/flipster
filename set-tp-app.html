@@ -1076,13 +1076,8 @@ function updateQtyUI() {
 
   if (editingQty) {
     qtyCursorEl.classList.add('visible');
-    if (inputBuffer === '') {
-      qtyValEl.textContent = 'Enter Qty';
-      qtyValEl.classList.add('placeholder');
-    } else {
-      qtyValEl.textContent = inputBuffer;
-      qtyValEl.classList.remove('placeholder');
-    }
+    qtyValEl.textContent = inputBuffer;
+    qtyValEl.classList.remove('placeholder');
   } else {
     qtyCursorEl.classList.remove('visible');
     var qty = getQuantityBTC();
