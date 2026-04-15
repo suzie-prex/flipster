@@ -794,14 +794,17 @@ function quickAdjust(field, pctDelta) {
     if (limitOrderEnabled && !bboEnabled) {
       limitPrice = triggerPrice;
     }
-    if (keyboardOpen && editingField === 'trigger') {
-      inputBuffer = triggerPrice.toString();
-    }
   } else {
     limitPrice = Math.round(limitPrice * (1 + pctDelta) * 10) / 10;
-    if (keyboardOpen && editingField === 'limit') {
-      inputBuffer = limitPrice.toString();
+  }
+
+  // Switch cursor to the adjusted field
+  if (keyboardOpen) {
+    if (editingField !== field) {
+      saveCurrentField();
+      editingField = field;
     }
+    inputBuffer = (field === 'trigger' ? triggerPrice : limitPrice).toString();
   }
   updateUI();
 }
